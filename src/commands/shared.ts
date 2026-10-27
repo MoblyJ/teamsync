@@ -4,7 +4,7 @@ import path from "node:path";
 import { GitClient } from "../core/git.js";
 import { loadConfigFromDir, CONFIG_PATH } from "../core/config.js";
 import { configError, notFoundError } from "../core/errors.js";
-import { loadUserState } from "../core/userstate.js";
+import { loadUserState, findMembership } from "../core/userstate.js";
 
 export interface ResolvedRepo {
   root: string;
@@ -69,12 +69,12 @@ export async function resolveEnrolledRepo(cwd: string): Promise<ResolvedRepo> {
   }
 
   const state = await loadUserState();
-  const membership = state.memberships[config.repository];
+  const membership = findMembership(state, config.repository, root);
   return {
     root,
     git,
     config,
-    role: membership && membership.clonePath === root ? membership.role : null,
+    role: membership?.role ?? null,
   };
 }
 

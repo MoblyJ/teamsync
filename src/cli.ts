@@ -183,6 +183,8 @@ program
     const out = makeOutput(ctx.json);
     const result = await runSync(ctx, out);
     if (ctx.json) out.json(result);
+    // A conflict is a blocked outcome: nonzero exit so scripts can react.
+    if (result.kind === "conflict") process.exit(ExitCode.BLOCKED);
   });
 
 program.exitOverride();

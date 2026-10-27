@@ -4,7 +4,7 @@ import { readFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { MemoryEventSink, JsonlFileEventSink } from "../../src/core/events.js";
-import { loadUserState, saveMembership, clearMembership, userStateDir } from "../../src/core/userstate.js";
+import { loadUserState, saveMembership, clearMembership, userStateDir, findMembership } from "../../src/core/userstate.js";
 
 describe("events", () => {
   it("MemoryEventSink records ordered events", () => {
@@ -40,10 +40,22 @@ describe("user state", () => {
       env,
     );
     const state = await loadUserState(env);
-    expect(state.memberships["example/demo"]?.role).toBe("frontend");
+    expect(findMembership(state, "example/demo", "/tmp/demo")?.role).toBe("frontend");
+
+    // Regression: two clones of the SAME repo must coexist (shared machines,
+    // WSL + Windows side by side). Keyed by repo AND clone path.
+    await saveMembership(
+      { repository: "example/demo", role: "backend", clonePath: "/tmp/demo-wsl", joinedAt: "2026-10-27T00:00:01Z" },
+      env,
+    );
+    let two = await loadUserState(env);
+    expect(Object.keys(two.memberships)).toHaveLength(2);
+    expect(findMembership(two, "example/demo", "/tmp/demo")?.role).toBe("frontend");
+    expect(findMembership(two, "example/demo", "/tmp/demo-wsl")?.role).toBe("backend");
+    expect(findMembership(two, "example/demo", "/tmp/unknown")).toBeNull();
 
     await clearMembership("example/demo", env);
-    expect((await loadUserState(env)).memberships["example/demo"]).toBeUndefined();
+    expect(Object.keys((await loadUserState(env)).memberships)).toHaveLength(0);
 
     // Only one state file lives there — no token-shaped content anywhere.
     const raw = await readFile(path.join(dir, "state.json"), "utf8");

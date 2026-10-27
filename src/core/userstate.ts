@@ -15,7 +15,22 @@ export interface RepoMembership {
 
 export interface TeamsyncUserState {
   version: 1;
-  memberships: Record<string, RepoMembership>; // keyed by OWNER/REPO
+  /** Keyed by "OWNER/REPO::clonePath" — one person may keep several clones. */
+  memberships: Record<string, RepoMembership>;
+}
+
+/** Membership lookup for the clone the user is standing in. */
+export function findMembership(
+  state: TeamsyncUserState,
+  repository: string,
+  clonePath: string,
+): RepoMembership | null {
+  const direct = state.memberships[`${repository}::${clonePath}`];
+  if (direct) return direct;
+  // Tolerate legacy entries keyed by repository alone.
+  const legacy = state.memberships[repository];
+  if (legacy && legacy.clonePath === clonePath) return legacy;
+  return null;
 }
 
 export function userStateDir(env: NodeJS.ProcessEnv = process.env): string {
@@ -41,7 +56,8 @@ export async function loadUserState(env: NodeJS.ProcessEnv = process.env): Promi
     }
     const memberships: Record<string, RepoMembership> = {};
     for (const [key, value] of Object.entries(parsed.memberships as Record<string, unknown>)) {
-      if (!parseRepositorySlug(key)) continue;
+      const [repoKey] = key.includes("::") ? key.split("::") : [key];
+      if (!parseRepositorySlug(repoKey ?? key)) continue;
       const v = value as Record<string, unknown>;
       if (
         typeof v?.role === "string" &&
@@ -49,7 +65,7 @@ export async function loadUserState(env: NodeJS.ProcessEnv = process.env): Promi
         typeof v?.joinedAt === "string"
       ) {
         memberships[key] = {
-          repository: key,
+          repository: repoKey ?? key,
           role: v.role,
           clonePath: v.clonePath,
           joinedAt: v.joinedAt,
@@ -67,7 +83,7 @@ export async function saveMembership(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<void> {
   const state = await loadUserState(env);
-  state.memberships[membership.repository] = membership;
+  state.memberships[`${membership.repository}::${membership.clonePath}`] = membership;
   const dir = userStateDir(env);
   await mkdir(dir, { recursive: true });
   await writeFile(userStateFile(env), `${JSON.stringify(state, null, 2)}\n`, "utf8");
@@ -75,7 +91,9 @@ export async function saveMembership(
 
 export async function clearMembership(repository: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   const state = await loadUserState(env);
-  delete state.memberships[repository];
+  for (const key of Object.keys(state.memberships)) {
+    if (key === repository || key.startsWith(`${repository}::`)) delete state.memberships[key];
+  }
   const dir = userStateDir(env);
   await mkdir(dir, { recursive: true });
   await writeFile(userStateFile(env), `${JSON.stringify(state, null, 2)}\n`, "utf8");
