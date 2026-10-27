@@ -1,0 +1,84 @@
+# TeamSync integration gate — created by `teamsync init`.
+#
+# Principles:
+# - Runs on `pull_request` ONLY (never pull_request_target): PR code must never
+#   run with repository secrets. This workflow declares no secrets at all.
+# - Path-filtered component jobs may be skipped when irrelevant — that is fine.
+# - The aggregate `integration` job ALWAYS runs and fails if any component
+#   job failed or was cancelled. GitHub treats "skipped" required checks as
+#   satisfied, so this always-on gate is what should be marked required in
+#   branch protection.
+# - Least privilege: read-only repository contents, no secrets, no deployments.
+#
+# If your repository later enables a GitHub merge queue, merge-group events
+# must also run the gate: uncomment the `merge_group` trigger below.
+
+name: integration
+
+on:
+  pull_request:
+  # merge_group:
+  #   types: [checks_requested]
+
+# Minimum permissions for everything below (jobs may narrow further).
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --eval "console.log('backend checks: replace with your test command')"
+      # Example for a real backend:
+      # - run: npm ci
+      # - run: npm test --workspace apps/backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --eval "console.log('frontend checks: replace with your build/test command')"
+
+  services:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --eval "console.log('services checks: replace with your test command')"
+
+  # Aggregate gate: mark THIS check as required in branch protection.
+  # `if: always()` keeps it running even when component jobs were skipped;
+  # the guard step fails it if any component job failed or was cancelled.
+  integration:
+    needs: [backend, frontend, services]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Fail if any component job failed or was cancelled
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "Component job results: ${{ toJSON(needs.*.result) }}"
+          exit 1
+      - name: Gate passed (skipped components are OK, failures are not)
+        run: echo "integration gate OK — results: ${{ toJSON(needs.*.result) }}"

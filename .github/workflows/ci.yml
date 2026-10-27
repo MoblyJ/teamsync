@@ -1,0 +1,70 @@
+# TeamSync's OWN CI — distinct from templates/integration.yml, which is what
+# `teamsync init` writes into USER repositories. This one tests the CLI itself
+# on every supported platform. No secrets; PRs run in unprivileged context.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [20, 22]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Type check tests (incl. e2e helpers)
+        run: npx tsc --noEmit -p tsconfig.json
+      - name: Test (unit + integration + e2e)
+        run: npm test
+
+  package:
+    name: npm pack → clean-prefix install smoke test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Pack
+        run: npm pack
+      - name: Install tarball into a clean prefix
+        shell: bash
+        run: |
+          TGZ=$(ls teamsync-teamsync-*.tgz | head -1)
+          npm install -g --prefix "$PWD/prefix" "./$TGZ"
+      - name: Smoke test help/version from the installed binary
+        shell: bash
+        run: |
+          ./prefix/teamsync --version
+          ./prefix/teamsync --help
+          ./prefix/teamsync doctor || test $? -eq 1  # gh absent on runner: exit 1 with hints is correct
+      - name: Verify no credentials in published contents
+        shell: bash
+        run: |
+          TGZ=$(ls teamsync-teamsync-*.tgz | head -1)
+          tar -tzf "$TGZ"
+          if tar -xzOf "$TGZ" --wildcards '*.js' '*.json' '*.md' 2>/dev/null | grep -E 'gh[posur]_[A-Za-z0-9]{16,}'; then
+            echo "FOUND TOKEN-LIKE STRING IN PACKAGE"; exit 1
+          fi

@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- demo/apps/frontend — static page; served however you like, talks to the backend API. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TeamSync demo — frontend</title>
+  </head>
+  <body>
+    <h1>Team tasks</h1>
+    <div id="tasks">(loading…)</div>
+    <script type="module">
+      import { loadTasks } from "./render.mjs";
+      const result = await loadTasks(window.location.origin);
+      document.getElementById("tasks").innerHTML = result.ok ? result.data : `error: ${result.error}`;
+    </script>
+  </body>
+</html>
