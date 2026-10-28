@@ -14,10 +14,12 @@
     "bin/",
     "dist/",
     "templates/",
+    "scripts/postinstall.mjs",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "postinstall": "node scripts/postinstall.mjs",
     "test": "npm run build && vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
