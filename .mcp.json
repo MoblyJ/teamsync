@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "teamsync": {
+      "command": "node",
+      "args": ["bin/teamsync.js", "mcp"],
+      "env": {}
+    }
+  }
+}

@@ -15,6 +15,7 @@ import { runStatus } from "./commands/status.js";
 import { runWatch } from "./commands/watch.js";
 import { runSync } from "./commands/sync.js";
 import { runServe } from "./commands/serve.js";
+import { runStage, runCommit, runPush } from "./commands/simple.js";
 import {
   runTeamCode,
   runTeamCreate,
@@ -201,6 +202,46 @@ program
     if (ctx.json) out.json(result);
     // A conflict is a blocked outcome: nonzero exit so scripts can react.
     if (result.kind === "conflict") process.exit(ExitCode.BLOCKED);
+  });
+
+// --- simple git-style verbs (manual step-by-step mode) ----------------------
+program
+  .command("stage")
+  .description("Stage changes explicitly (--all or named paths). Excludes likely secret files; warns on cross-role/shared paths.")
+  .option("-a, --all", "stage all current changes (minus excluded secrets)", false)
+  .option("--paths <paths...>", "stage only these repo-relative paths")
+  .action(async (opts: { all?: boolean; paths?: string[] }, command: Command) => {
+    const global = command.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "stage");
+    await runStage(ctx, makeOutput(ctx.json), opts);
+  });
+
+program
+  .command("commit")
+  .description("Commit the currently staged changes (use after `teamsync stage`).")
+  .requiredOption("-m, --message <message>", "commit message")
+  .action(async (opts: { message: string }, command: Command) => {
+    const global = command.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "commit");
+    await runCommit(ctx, makeOutput(ctx.json), opts.message);
+  });
+
+program
+  .command("push")
+  .description("Push the current task branch to origin (never force-pushes; teamsync branches only).")
+  .action(async (_opts, command: Command) => {
+    const global = command.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "push");
+    await runPush(ctx, makeOutput(ctx.json));
+  });
+
+// --- MCP server (AI/vibe mode) -----------------------------------------------
+program
+  .command("mcp")
+  .description("Run the TeamSync MCP server over stdio (for AI coding tools). Launch it in your clone.")
+  .action(async () => {
+    const { runMcpStdio } = await import("./mcp/server.js");
+    await runMcpStdio();
   });
 
 program

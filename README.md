@@ -127,7 +127,67 @@ Role ownership is **advisory**: `submit` warns when you edit outside your
 role's paths and highlights shared paths (contracts, lockfiles, workflows).
 It is not access control — GitHub permissions decide.
 
+## Command reference — two ways to work the same flow
+
+**Manual mode** (step-by-step, plain-git style) and **vibe mode** (AI tools
+via MCP) drive identical commands; pick per taste, mix freely.
+
+| Step | Manual (one at a time) | Fast path | MCP tool |
+| --- | --- | --- | --- |
+| check setup | `teamsync doctor` | — | `teamsync_doctor` |
+| start a task | `teamsync start homepage` | — | `teamsync_start` |
+| stage | `teamsync stage --all` *(or paths)* | — | `teamsync_stage` |
+| commit | `teamsync commit -m "Add homepage"` | — | `teamsync_commit` |
+| push | `teamsync push` | — | `teamsync_push` |
+| everything | — | `teamsync submit --all -m "…"` | `teamsync_submit` |
+| team state | `teamsync status` | same | `teamsync_status` |
+| catch up | `teamsync sync` | same | `teamsync_sync` |
+| rosters | `teamsync team list` | same | `teamsync_team_list` |
+
+Safety rails are identical in both modes: no implicit staging, secret-file
+exclusion, no force-push, no rewrites, dirty-worktree refusals, one PR per
+branch. AI failures return the same actionable hints the CLI prints, so the
+assistant can self-correct.
+
+### MCP connect clause
+
+Claude Code / Claude Desktop / any stdio MCP client (`docs/mcp-claude-code.md`
+has the full guide):
+
+```json
+{
+  "mcpServers": {
+    "teamsync": { "command": "teamsync", "args": ["mcp"] }
+  }
+}
+```
+
+This repo also ships a working `.mcp.json` (`node bin/teamsync.js mcp`) so
+Claude Code gets the tools immediately in this project.
+
 ## Local team server + dashboard (LAN mode)
+
+**Works across networks / mobile data too.** The code-collaboration flow
+(`start/submit/status/sync`) talks to GitHub directly, so it already works
+from any network. The team server just needs a *reachable URL*:
+
+- **Same Wi-Fi/LAN:** use the printed `http://<lan-ip>:4700`.
+- **Different networks (mobile data):** expose the host with a tunnel and
+  share that URL — zero config changes needed:
+
+  ```sh
+  # host: (any of these, each prints a public URL)
+  cloudflared tunnel --url http://localhost:4700   # → https://xxxx.trycloudflare.com
+  ngrok http 4700                                  # → https://xxxx.ngrok.app
+  # teammates then:
+  teamsync team join hack-night --role qa --code <CODE> \
+    --server https://xxxx.trycloudflare.com
+  ```
+
+  Over a public tunnel the trust model changes (anyone with the URL can read
+  rosters): use a tunnel with access control (Cloudflare Access, Tailscale
+  ACL) or accept the exposure consciously. `team discover` only works on a
+  shared LAN — everywhere else, pass `--server` explicitly.
 
 Besides per-repo Git collaboration, TeamSync can run a **local coordination
 server** for everyone who installed the CLI: the host runs `teamsync serve`
