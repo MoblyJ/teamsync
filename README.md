@@ -176,13 +176,19 @@ from any network. The team server just needs a *reachable URL*:
   share that URL — zero config changes needed:
 
   ```sh
-  # host: (any of these, each prints a public URL)
-  cloudflared tunnel --url http://localhost:4700   # → https://xxxx.trycloudflare.com
-  ngrok http 4700                                  # → https://xxxx.ngrok.app
+  # host: the easy way — starts the server AND the tunnel in one command
+  teamsync serve --tunnel
+  #  → prints the public dashboard URL + a ready-made join command
+  # (manual alternative: cloudflared tunnel --url http://localhost:4700)
+
   # teammates then:
   teamsync team join hack-night --role qa --code <CODE> \
     --server https://xxxx.trycloudflare.com
   ```
+
+  `--tunnel` uses the free cloudflared quick tunnel (no account). It fails
+  fast with per-platform install hints if cloudflared is missing, and stops
+  the tunnel cleanly on Ctrl+C.
 
   Over a public tunnel the trust model changes (anyone with the URL can read
   rosters): use a tunnel with access control (Cloudflare Access, Tailscale

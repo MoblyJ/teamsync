@@ -251,7 +251,8 @@ program
   .option("--host <addr>", "bind address (default 0.0.0.0 = LAN)")
   .option("--state <file>", "registry state file (default ./.teamsync-server.json)")
   .option("--no-discovery", "disable the UDP LAN beacon")
-  .action(async (opts: { port: string; host?: string; state?: string; discovery?: boolean }, command: Command) => {
+  .option("-t, --tunnel", "expose the dashboard via a free cloudflared quick tunnel (public URL, no account)")
+  .action(async (opts: { port: string; host?: string; state?: string; discovery?: boolean; tunnel?: boolean }, command: Command) => {
     const global = command.parent!.opts() as GlobalOptions;
     const ctx = ctxFor(global, "serve");
     const out = makeOutput(false); // long-running; human output only
@@ -260,6 +261,7 @@ program
       ...(opts.host ? { host: opts.host } : {}),
       ...(opts.state ? { state: opts.state } : {}),
       ...(opts.discovery === false ? { noDiscovery: true } : {}),
+      ...(opts.tunnel === true ? { tunnel: true } : {}),
     });
   });
 

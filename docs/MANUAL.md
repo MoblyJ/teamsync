@@ -59,7 +59,7 @@ macOS, Linux, WSL (install gh inside the WSL distro).
 ### Team server & dashboard
 | Command | What it does |
 | --- | --- |
-| `teamsync serve [-p PORT]` | run the local team server: REST + SSE + dashboard at http://localhost:4700; state persists in `.teamsync-server.json` |
+| `teamsync serve [-p PORT] [--tunnel]` | run the local team server: REST + SSE + dashboard at http://localhost:4700; `--tunnel` adds a free public cloudflared URL (no account) + prints a ready-made join command for teammates on other networks |
 | `teamsync team create NAME` | create a team → you are admin; prints the one-time join code |
 | `teamsync team join NAME --role R --code C` | join with the code as a normal member |
 | `teamsync team list \| info NAME` | rosters, roles, admins, last-seen |
