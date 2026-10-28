@@ -17,6 +17,10 @@ export interface TeamsyncUserState {
   version: 1;
   /** Keyed by "OWNER/REPO::clonePath" — one person may keep several clones. */
   memberships: Record<string, RepoMembership>;
+  /** Last-used team server URL (set by `team` commands). */
+  server?: string;
+  /** Admin tokens per team name — shown once by the server at creation. */
+  teamAdminTokens?: Record<string, string>;
 }
 
 /** Membership lookup for the clone the user is standing in. */
@@ -72,7 +76,20 @@ export async function loadUserState(env: NodeJS.ProcessEnv = process.env): Promi
         };
       }
     }
-    return { version: 1, memberships };
+    return {
+      version: 1,
+      memberships,
+      ...(typeof parsed.server === "string" ? { server: parsed.server } : {}),
+      ...(typeof parsed.teamAdminTokens === "object" && parsed.teamAdminTokens !== null
+        ? {
+            teamAdminTokens: Object.fromEntries(
+              Object.entries(parsed.teamAdminTokens).filter(
+                ([, v]) => typeof v === "string",
+              ) as [string, string][],
+            ),
+          }
+        : {}),
+    };
   } catch {
     return { version: 1, memberships: {} };
   }
@@ -97,4 +114,37 @@ export async function clearMembership(repository: string, env: NodeJS.ProcessEnv
   const dir = userStateDir(env);
   await mkdir(dir, { recursive: true });
   await writeFile(userStateFile(env), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+}
+
+async function mutateState(env: NodeJS.ProcessEnv, fn: (state: TeamsyncUserState) => void): Promise<void> {
+  const state = await loadUserState(env);
+  fn(state);
+  const dir = userStateDir(env);
+  await mkdir(dir, { recursive: true });
+  await writeFile(userStateFile(env), `${JSON.stringify(state, null, 2)}\n`, "utf8");
+}
+
+/** Remember the team server the user last talked to (next commands reuse it). */
+export async function saveServer(serverUrl: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  await mutateState(env, (s) => {
+    s.server = serverUrl;
+  });
+}
+
+export async function loadServer(env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
+  const state = await loadUserState(env);
+  return state.server ?? null;
+}
+
+/** Store a team's admin token locally (only the creating machine ever has it). */
+export async function saveTeamAdminToken(team: string, token: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  await mutateState(env, (s) => {
+    s.teamAdminTokens = s.teamAdminTokens ?? {};
+    s.teamAdminTokens[team.toLowerCase()] = token;
+  });
+}
+
+export async function loadTeamAdminToken(team: string, env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
+  const state = await loadUserState(env);
+  return state.teamAdminTokens?.[team.toLowerCase()] ?? null;
 }

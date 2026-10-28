@@ -127,6 +127,62 @@ Role ownership is **advisory**: `submit` warns when you edit outside your
 role's paths and highlights shared paths (contracts, lockfiles, workflows).
 It is not access control — GitHub permissions decide.
 
+## Local team server + dashboard (LAN mode)
+
+Besides per-repo Git collaboration, TeamSync can run a **local coordination
+server** for everyone who installed the CLI: the host runs `teamsync serve`
+in any folder (the folder's name/project is irrelevant; their gh is already
+connected), and any number of teams with any number of members can form on
+it. The person who creates a team is its **admin**; everyone else joins as a
+normal user with the team's one-time **join code**.
+
+```
+Host machine (any folder):
+  teamsync serve                 # http://localhost:4700 (+ LAN address printed)
+
+Admin (any installed user, identity = their gh login):
+  teamsync team create hack-night        # → prints join code ONCE
+  teamsync team repo hack-night OWNER/REPO   # dashboard then shows that repo's PRs
+
+Teammates (same LAN or same machine):
+  teamsync team join hack-night --role frontend --code <CODE> --server http://<host>:4700
+  teamsync team heartbeat hack-night     # refresh "last seen" on the dashboard
+```
+
+Admin-only commands (token stored on the creator's machine): `team code`,
+`team rotate-code`, `team remove-member`, `team repo`, `team delete`.
+Everyone: `team list`, `team info`, `team leave`, `team discover`.
+Registry state persists in `.teamsync-server.json` (gitignored) next to
+wherever `serve` runs; restart-safe.
+
+**Trust model:** identity is a claimed GitHub login verified by join-code
+membership (admin token for admin ops). This is a LAN-trust coordination
+server — it never sees or stores GitHub credentials. Anyone who can reach
+the port can read team rosters; run it on a trusted network or bind
+`--host 127.0.0.1` for single-machine use.
+
+### All the ways to connect to the dashboard/server
+
+1. **Built-in dashboard** — `http://localhost:4700` on the host: teams,
+   members, roles, last-seen, and (once `team repo` is set) live PR states.
+   Auto-refresh + SSE push; light/dark aware.
+2. **From teammates' browsers on the LAN** — `http://<host-LAN-ip>:4700`
+   (the address is printed by `serve`).
+3. **Auto-discovery** — `teamsync team discover` finds servers broadcasting
+   on UDP 41733 and prints clickable URLs (broadcasts may be filtered on
+   some networks/WSL — the explicit address always works).
+4. **REST API** — `GET/POST /api/teams`, `GET/DELETE /api/teams/<name>`,
+   `POST /api/teams/<name>/{join,leave,heartbeat,repository,code,show-code,remove-member}`,
+   `GET /api/repos/<owner>/<repo>/status` (reuses the CLI's own status core
+   with the host's gh auth). Machine-readable, same rules as the CLI.
+5. **Live event stream (SSE)** — `GET /api/events` pushes `teams.changed`
+   etc.; any custom dashboard can subscribe.
+6. **Custom/external dashboards** — the API sends permissive CORS headers,
+   so a React/Vue page served from any port/host can consume it directly.
+7. **CLI/scripting** — every `team` subcommand takes `--json`, and
+   `--server` (or `TEAMSYNC_SERVER`, or the remembered last server) selects
+   the target.
+
 ## Daily workflow
 
 ```sh

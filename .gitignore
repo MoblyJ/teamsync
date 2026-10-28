@@ -3,6 +3,7 @@ dist/
 *.tgz
 coverage/
 .vitest/
+.teamsync-server.json
 
 # Task artifact, not part of the product.
 prompt.md

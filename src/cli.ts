@@ -14,6 +14,22 @@ import { runSubmit } from "./commands/submit.js";
 import { runStatus } from "./commands/status.js";
 import { runWatch } from "./commands/watch.js";
 import { runSync } from "./commands/sync.js";
+import { runServe } from "./commands/serve.js";
+import {
+  runTeamCode,
+  runTeamCreate,
+  runTeamDelete,
+  runTeamDiscover,
+  runTeamHeartbeat,
+  runTeamInfo,
+  runTeamJoin,
+  runTeamLeave,
+  runTeamList,
+  runTeamRemoveMember,
+  runTeamRepo,
+  runTeamRotateCode,
+  type TeamOptions,
+} from "./commands/team.js";
 import { isTeamsyncError, ExitCode } from "./core/errors.js";
 import { GhNotInstalledError } from "./core/github.js";
 import { makeOutput } from "./ui/output.js";
@@ -185,6 +201,129 @@ program
     if (ctx.json) out.json(result);
     // A conflict is a blocked outcome: nonzero exit so scripts can react.
     if (result.kind === "conflict") process.exit(ExitCode.BLOCKED);
+  });
+
+program
+  .command("serve")
+  .description("Run the local team server: team registry + REST API + live events + dashboard. Works in any folder.")
+  .option("-p, --port <port>", "HTTP port (default 4700)", "4700")
+  .option("--host <addr>", "bind address (default 0.0.0.0 = LAN)")
+  .option("--state <file>", "registry state file (default ./.teamsync-server.json)")
+  .option("--no-discovery", "disable the UDP LAN beacon")
+  .action(async (opts: { port: string; host?: string; state?: string; discovery?: boolean }, command: Command) => {
+    const global = command.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "serve");
+    const out = makeOutput(false); // long-running; human output only
+    await runServe(ctx, out, {
+      port: Number(opts.port),
+      ...(opts.host ? { host: opts.host } : {}),
+      ...(opts.state ? { state: opts.state } : {}),
+      ...(opts.discovery === false ? { noDiscovery: true } : {}),
+    });
+  });
+
+const team = program.command("team").description("Create and manage teams on a local TeamSync server.");
+function teamServerOption(cmd: Command): Command {
+  return cmd.option("--server <url>", "team server URL (default: last used, else http://localhost:4700)");
+}
+teamServerOption(team.command("list")).description("List teams on the server.").action(async (opts, command) => {
+  const global = command.parent!.parent!.opts() as GlobalOptions;
+  const ctx = ctxFor(global, "team list");
+  await runTeamList(ctx, makeOutput(ctx.json), opts as TeamOptions);
+});
+teamServerOption(team.command("info <name>")).description("Show one team's members and roles.").action(async (name: string, opts, command) => {
+  const global = command.parent!.parent!.opts() as GlobalOptions;
+  const ctx = ctxFor(global, "team info");
+  await runTeamInfo(ctx, makeOutput(ctx.json), name, opts as TeamOptions);
+});
+team
+  .command("create <name>")
+  .description("Create a team; you become its admin. Prints the one-time join code.")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team create");
+    await runTeamCreate(ctx, makeOutput(ctx.json), name, opts as TeamOptions);
+  });
+team
+  .command("join <name>")
+  .description("Join a team with its join code and your role.")
+  .requiredOption("--role <role>", "your role in the team (e.g. frontend)")
+  .requiredOption("--code <code>", "the team's join code (from the admin)")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team join");
+    await runTeamJoin(ctx, makeOutput(ctx.json), name, opts as TeamOptions);
+  });
+team
+  .command("leave <name>")
+  .description("Leave a team (admins must delete the team instead).")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team leave");
+    await runTeamLeave(ctx, makeOutput(ctx.json), name, opts as TeamOptions);
+  });
+team
+  .command("code <name>")
+  .description("Show the current join code (admin only, token from this machine).")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team code");
+    await runTeamCode(ctx, makeOutput(ctx.json), name, opts as TeamOptions);
+  });
+team
+  .command("rotate-code <name>")
+  .description("Generate a new join code; the old one stops working (admin only).")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team rotate-code");
+    await runTeamRotateCode(ctx, makeOutput(ctx.json), name, opts as TeamOptions);
+  });
+team
+  .command("remove-member <name> <login>")
+  .description("Remove a member from a team (admin only).")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, login: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team remove-member");
+    await runTeamRemoveMember(ctx, makeOutput(ctx.json), name, login, opts as TeamOptions);
+  });
+team
+  .command("repo <name> <owner/repo>")
+  .description("Point a team at a GitHub repository; the dashboard then shows its PRs (admin only).")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, repository: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team repo");
+    await runTeamRepo(ctx, makeOutput(ctx.json), name, repository, opts as TeamOptions);
+  });
+team
+  .command("delete <name>")
+  .description("Delete a team and its roster (admin only).")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team delete");
+    await runTeamDelete(ctx, makeOutput(ctx.json), name, opts as TeamOptions);
+  });
+team
+  .command("heartbeat <name>")
+  .description("Tell the server you're active (updates your 'last seen' on the dashboard).")
+  .option("--server <url>", "team server URL")
+  .action(async (name: string, opts, command) => {
+    const global = command.parent!.parent!.opts() as GlobalOptions;
+    const ctx = ctxFor(global, "team heartbeat");
+    await runTeamHeartbeat(ctx, makeOutput(ctx.json), name, opts as TeamOptions);
+  });
+team
+  .command("discover")
+  .description("Find TeamSync servers broadcasting on the local network (UDP).")
+  .action(async () => {
+    await runTeamDiscover(makeOutput(false));
   });
 
 program.exitOverride();
