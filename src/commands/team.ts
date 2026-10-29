@@ -180,7 +180,7 @@ export async function runTeamRepo(ctx: CommandContext, out: Output, name: string
     body: { repository, adminToken: token },
   });
   out.success(`Team "${body.team.displayName}" now tracks ${repository}.`);
-  out.detail(`The dashboard at ${server} shows this team's open PRs and their states.`);
+  out.detail(`PR states for it are available via the server API: GET ${server}/api/repos/${repository}/status`);
 }
 
 export async function runTeamHeartbeat(ctx: CommandContext, out: Output, name: string, opts: TeamOptions): Promise<void> {

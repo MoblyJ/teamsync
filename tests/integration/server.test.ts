@@ -53,14 +53,15 @@ async function call(
 }
 
 describe("team server REST flow", () => {
-  it("health and dashboard", async () => {
+  it("health responds; no page/UI routes exist", async () => {
     const health = await call("/api/health");
     expect(health.status).toBe(200);
     expect(health.body.ok).toBe(true);
 
-    const page = await fetch(`${baseUrl}/`);
-    expect(page.status).toBe(200);
-    expect(await page.text()).toContain("TeamSync");
+    // The dashboard UI was removed: the root must not serve HTML anymore.
+    const root = await call("/");
+    expect(root.status).toBe(404);
+    expect(JSON.stringify(root.body)).not.toMatch(/<html|TeamSync —/);
   });
 
   it("admin creates a team; join code + admin token returned exactly once", async () => {

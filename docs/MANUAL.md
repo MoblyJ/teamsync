@@ -56,16 +56,16 @@ macOS, Linux, WSL (install gh inside the WSL distro).
 | `teamsync commit -m "MSG"` | commit what is staged |
 | `teamsync push` | push the task branch (never force-pushes; refuses non-task branches) |
 
-### Team server & dashboard
+### Team server
 | Command | What it does |
 | --- | --- |
-| `teamsync serve [-p PORT] [--tunnel]` | run the local team server: REST + SSE + dashboard at http://localhost:4700; `--tunnel` adds a free public cloudflared URL (no account) + prints a ready-made join command for teammates on other networks |
+| `teamsync serve [-p PORT]` | run the local team server (REST + SSE) at http://localhost:4700; state persists in `.teamsync-server.json` |
 | `teamsync team create NAME` | create a team → you are admin; prints the one-time join code |
 | `teamsync team join NAME --role R --code C` | join with the code as a normal member |
 | `teamsync team list \| info NAME` | rosters, roles, admins, last-seen |
 | `teamsync team code/rotate-code NAME` | show / regenerate the join code (admin only) |
 | `teamsync team remove-member NAME LOGIN` | admin only |
-| `teamsync team repo NAME OWNER/REPO` | point the team's dashboard at a repo (admin only) |
+| `teamsync team repo NAME OWNER/REPO` | track a repo for the team — PR states via `GET /api/repos/OWNER/REPO/status` (admin only) |
 | `teamsync team leave \| delete NAME` | leave as member / delete as admin |
 | `teamsync team heartbeat NAME` | refresh your "last seen" |
 | `teamsync team discover` | find servers on the LAN (UDP) |
@@ -89,9 +89,9 @@ macOS, Linux, WSL (install gh inside the WSL distro).
   No force-push, no rewrites, no silent stashing — ever.
 - **Secret protection** — `.env`, `*.pem`, `id_rsa`, credential stores…
   never staged by `--all`; naming one explicitly is a hard stop.
-- **Team server + dashboard** — any number of teams/members; creator =
-  admin (join-code gated); live roster + PR dashboard on localhost or LAN;
-  works across networks/mobile data via a tunnel (cloudflared/ngrok).
+- **Team server** — any number of teams/members; creator = admin
+  (join-code gated); REST + SSE API for rosters, heartbeats, and per-repo PR
+  states; the coding flow itself works from any network (it talks to GitHub).
 - **Two driving modes** — manual commands and MCP for AI tools; identical
   safety rails.
 - **Structured output** — `--json` everywhere relevant; JSONL events feed a
@@ -122,13 +122,13 @@ teamsync status            # or: teamsync watch
 teamsync sync              # when main moved under you; resolve conflicts if listed, then submit again
 ```
 
-**Team dashboard:**
+**Team server:**
 ```sh
 teamsync serve                                   # host machine
 teamsync team create hack-night                  # → join code
-teamsync team repo hack-night OWNER/REPO         # PRs on the dashboard
+teamsync team repo hack-night OWNER/REPO         # PR states via the API
 # teammates: teamsync team join hack-night --role qa --code CODE --server http://host:4700
-# browser: http://localhost:4700 (host) or http://<host-ip>:4700 (LAN)
+# API: GET http://host:4700/api/teams   ·   GET /api/repos/OWNER/REPO/status
 ```
 
 ## 5. Vibe mode (AI tools)
@@ -152,7 +152,7 @@ Details: `docs/mcp-claude-code.md`.
 | PR stuck `checks-blocked` | a required check never ran or was skipped — use the aggregate `integration` job from the template |
 | PR `behind` | `teamsync sync` then `teamsync submit` |
 | conflict | `teamsync sync` lists files; resolve, commit merge, submit |
-| dashboard unreachable from phone/other network | tunnel the server: `cloudflared tunnel --url http://localhost:4700` |
+| team server unreachable from another network | expose the port yourself (tunnel/VPS) and pass `--server <url>`; the code flow needs no server |
 | config version error | update the CLI |
 
 Exit codes: 0 ok · 1 general · 2 usage · 3 blocked/conflict · 4 auth ·

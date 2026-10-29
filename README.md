@@ -165,42 +165,14 @@ has the full guide):
 This repo also ships a working `.mcp.json` (`node bin/teamsync.js mcp`) so
 Claude Code gets the tools immediately in this project.
 
-## Local team server + dashboard (LAN mode)
+## Local team server (LAN mode)
 
-**Works across networks / mobile data too.** The code-collaboration flow
-(`start/submit/status/sync`) talks to GitHub directly, so it already works
-from any network. The team server just needs a *reachable URL*:
-
-- **Same Wi-Fi/LAN:** use the printed `http://<lan-ip>:4700`.
-- **Different networks (mobile data):** expose the host with a tunnel and
-  share that URL — zero config changes needed:
-
-  ```sh
-  # host: the easy way — starts the server AND the tunnel in one command
-  teamsync serve --tunnel
-  #  → prints the public dashboard URL + a ready-made join command
-  # (manual alternative: cloudflared tunnel --url http://localhost:4700)
-
-  # teammates then:
-  teamsync team join hack-night --role qa --code <CODE> \
-    --server https://xxxx.trycloudflare.com
-  ```
-
-  `--tunnel` uses the free cloudflared quick tunnel (no account). It fails
-  fast with per-platform install hints if cloudflared is missing, and stops
-  the tunnel cleanly on Ctrl+C.
-
-  Over a public tunnel the trust model changes (anyone with the URL can read
-  rosters): use a tunnel with access control (Cloudflare Access, Tailscale
-  ACL) or accept the exposure consciously. `team discover` only works on a
-  shared LAN — everywhere else, pass `--server` explicitly.
-
-Besides per-repo Git collaboration, TeamSync can run a **local coordination
-server** for everyone who installed the CLI: the host runs `teamsync serve`
-in any folder (the folder's name/project is irrelevant; their gh is already
-connected), and any number of teams with any number of members can form on
-it. The person who creates a team is its **admin**; everyone else joins as a
-normal user with the team's one-time **join code**.
+TeamSync can run a **local coordination server** for everyone who installed
+the CLI: the host runs `teamsync serve` in any folder (the folder's
+name/project is irrelevant; their gh is already connected), and any number
+of teams with any number of members can form on it. The person who creates a
+team is its **admin**; everyone else joins as a normal user with the team's
+one-time **join code**.
 
 ```
 Host machine (any folder):
@@ -208,11 +180,11 @@ Host machine (any folder):
 
 Admin (any installed user, identity = their gh login):
   teamsync team create hack-night        # → prints join code ONCE
-  teamsync team repo hack-night OWNER/REPO   # dashboard then shows that repo's PRs
+  teamsync team repo hack-night OWNER/REPO   # team then tracks that repo's PRs
 
 Teammates (same LAN or same machine):
   teamsync team join hack-night --role frontend --code <CODE> --server http://<host>:4700
-  teamsync team heartbeat hack-night     # refresh "last seen" on the dashboard
+  teamsync team heartbeat hack-night     # refresh "last seen"
 ```
 
 Admin-only commands (token stored on the creator's machine): `team code`,
@@ -227,27 +199,21 @@ server — it never sees or stores GitHub credentials. Anyone who can reach
 the port can read team rosters; run it on a trusted network or bind
 `--host 127.0.0.1` for single-machine use.
 
-### All the ways to connect to the dashboard/server
+### Ways to talk to the server
 
-1. **Built-in dashboard** — `http://localhost:4700` on the host: teams,
-   members, roles, last-seen, and (once `team repo` is set) live PR states.
-   Auto-refresh + SSE push; light/dark aware.
-2. **From teammates' browsers on the LAN** — `http://<host-LAN-ip>:4700`
-   (the address is printed by `serve`).
-3. **Auto-discovery** — `teamsync team discover` finds servers broadcasting
-   on UDP 41733 and prints clickable URLs (broadcasts may be filtered on
-   some networks/WSL — the explicit address always works).
-4. **REST API** — `GET/POST /api/teams`, `GET/DELETE /api/teams/<name>`,
+1. **CLI** — every `team` subcommand (`--json` supported); server picked by
+   `--server`, `TEAMSYNC_SERVER`, or the last used one.
+2. **REST API** — `GET/POST /api/teams`, `GET/DELETE /api/teams/<name>`,
    `POST /api/teams/<name>/{join,leave,heartbeat,repository,code,show-code,remove-member}`,
    `GET /api/repos/<owner>/<repo>/status` (reuses the CLI's own status core
-   with the host's gh auth). Machine-readable, same rules as the CLI.
-5. **Live event stream (SSE)** — `GET /api/events` pushes `teams.changed`
-   etc.; any custom dashboard can subscribe.
-6. **Custom/external dashboards** — the API sends permissive CORS headers,
-   so a React/Vue page served from any port/host can consume it directly.
-7. **CLI/scripting** — every `team` subcommand takes `--json`, and
-   `--server` (or `TEAMSYNC_SERVER`, or the remembered last server) selects
-   the target.
+   with the host's gh auth). Same rules as the CLI; permissive CORS.
+3. **Live event stream (SSE)** — `GET /api/events` pushes `teams.changed`
+   etc. for any custom client.
+4. **Different networks** — the code flow (`start/submit/status/sync`) talks
+   to GitHub directly and works from any network. For the team server
+   across networks, expose the port yourself (any tunnel/VPS you control)
+   and pass its URL with `--server`. UDP `team discover` only works on a
+   shared LAN.
 
 ## Daily workflow
 

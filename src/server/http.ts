@@ -1,7 +1,7 @@
 // `teamsync serve` HTTP app: team registry REST API + live event stream (SSE)
-// + the built-in dashboard page + a GitHub PR-status endpoint that REUSES the
-// same core modules the CLI uses (buildTeamStatus/GhCliAdapter) — the proof
-// that a dashboard was a supported extension all along.
+// + a GitHub PR-status endpoint that REUSES the same core modules the CLI
+// uses (buildTeamStatus/GhCliAdapter), so any external client gets exactly
+// what `teamsync status` reports.
 //
 // Trust model: LAN-trust coordination. Identity = claimed GitHub login;
 // membership is gated by per-team join codes; admin operations by the admin
@@ -25,7 +25,6 @@ import type { Registry } from "../core/registry.js";
 import { buildTeamStatus } from "../core/status.js";
 import { GhCliAdapter } from "../core/github.js";
 import { parseConfig } from "../core/config.js";
-import { DASHBOARD_HTML } from "./dashboard.js";
 import type { RegistryStore } from "./store.js";
 
 export interface ServerOptions {
@@ -112,7 +111,7 @@ export function createApp(store: RegistryStore, opts: ServerOptions): http.Serve
     const url = new URL(req.url ?? "/", "http://localhost");
     const path = url.pathname;
     const method = (req.method ?? "GET").toUpperCase();
-    // Registry is local, but permissive CORS keeps external dashboards simple.
+    // Registry is local, but permissive CORS keeps external clients simple.
     res.setHeader("access-control-allow-origin", "*");
     res.setHeader("access-control-allow-headers", "content-type");
     res.setHeader("access-control-allow-methods", "GET,POST,DELETE,OPTIONS");
@@ -123,13 +122,6 @@ export function createApp(store: RegistryStore, opts: ServerOptions): http.Serve
     }
 
     try {
-      // ---- dashboard -----------------------------------------------------
-      if (method === "GET" && (path === "/" || path === "/index.html")) {
-        res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-        res.end(DASHBOARD_HTML);
-        return;
-      }
-
       // ---- health --------------------------------------------------------
       if (method === "GET" && path === "/api/health") {
         sendJson(res, 200, { ok: true, server: "teamsync", version: 1 });
