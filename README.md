@@ -59,14 +59,21 @@ sudo apt install gh
 
 Supported shells/platforms: Windows (PowerShell), macOS (zsh/bash), Linux, WSL.
 
-## Installing guide
+## Installing guide (from this repository)
 
-### Option A — install from npm (recommended)
+The CLI is installed directly from this GitHub repo — no npm registry needed.
+
+### Quick install
 
 ```sh
-npm install -g @devoko/teamsync
+npm install -g github:MoblyJ/teamsync
 teamsync --version          # → 0.1.0
 ```
+
+> **npm ≥ 12:** git dependencies are blocked by default now; run
+> `npm install -g github:MoblyJ/teamsync --allow-git` instead.
+
+### First-run setup
 
 On npm ≤ 11, the first install automatically runs **first-run setup**:
 
@@ -79,31 +86,29 @@ On npm ≤ 11, the first install automatically runs **first-run setup**:
 Non-interactive shells (CI, scripts) are never prompted — they get printed
 hints instead. Opt out entirely with `TEAMSYNC_NO_SETUP=1`.
 
-> **npm ≥ 12 note:** npm now blocks lifecycle scripts (like our setup hook)
+> **npm ≥ 12 note:** npm blocks lifecycle scripts (like our setup hook)
 > unless the installer allows them. If setup didn't run, that's why — just
-> run `teamsync doctor` once and follow its hints, or allow the script:
-> `npm approve-scripts` in the global prefix. The CLI itself works fully
+> run `teamsync doctor` once and follow its hints. The CLI works fully
 > without the hook; it only automates gh install/login.
 
-### Option B — install straight from GitHub
+### Update to a newer version
 
 ```sh
-npm install -g github:MoblyJ/teamsync
-# npm ≥ 12 blocks git dependencies by default; add:
-npm install -g github:MoblyJ/teamsync --allow-git
+npm install -g github:MoblyJ/teamsync --force    # re-fetches latest main
 ```
 
-### Option C — hack on it locally, install your own build
+### From source (develop / verify the build yourself)
 
 ```sh
 git clone https://github.com/MoblyJ/teamsync.git
 cd teamsync
-npm install                 # runs build + tests prep
-npm pack                    # → devoko-teamsync-0.1.0.tgz
+npm install
+npm test                     # 164 tests: unit + integration + e2e
+npm pack                     # → devoko-teamsync-0.1.0.tgz
 npm install -g ./devoko-teamsync-0.1.0.tgz
 ```
 
-After any option, check everything with `teamsync doctor`.
+After any install: `teamsync doctor` verifies everything.
 
 ## One-time setup (repository owner)
 
@@ -310,7 +315,7 @@ future dashboard reads).
 | PR stuck in `checks-blocked` | a required check never ran or was **skipped** — TeamSync refuses to call skipped checks success; use the aggregate `integration` gate from the template |
 | PR `behind` | base moved: `teamsync sync`, then `teamsync submit` (fresh checks run against the new base) |
 | Merge conflict | `teamsync sync` on your task branch; resolve, commit the merge, `teamsync submit` |
-| `config version N not supported` | update the CLI: `npm install -g @devoko/teamsync@latest` |
+| `config version N not supported` | update the CLI: `npm install -g github:MoblyJ/teamsync --force` |
 | Rate limited in `watch` | it backs off automatically; increase `--interval` |
 | WSL: pushes ask for username | install/run gh inside WSL, then `gh auth setup-git` there |
 

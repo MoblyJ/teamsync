@@ -1,7 +1,7 @@
 # TeamSync Manual
 
 Complete command list, features, and usage guide. Everything runs from a
-terminal after `npm install -g @devoko/teamsync` (or from the local
+terminal after `npm install -g github:MoblyJ/teamsync` (or from a local
 tarball during development). For AI-assisted usage see "Vibe mode".
 
 ---
