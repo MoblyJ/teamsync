@@ -33,6 +33,10 @@ jobs:
         run: npx tsc --noEmit -p tsconfig.json
       - name: Test (unit + integration + e2e)
         run: npm test
+      - name: Committed dist/ must be fresh (shipped to GitHub installs)
+        run: |
+          git add dist || true
+          git diff --cached --exit-code dist || (echo "dist/ is stale — run: npm run build && git add dist && commit"; exit 1)
 
   package:
     name: npm pack → clean-prefix install smoke test
