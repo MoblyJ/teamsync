@@ -9,6 +9,13 @@ PRs, and GitHub-native auto-merge** — without a hosted backend.
 - **Genuine conflicts stay blocked** for a human to resolve — TeamSync never
   silently resolves, never force-pushes, never deletes your work.
 - **This is Git-based collaboration**, not live collaborative editing.
+- Two ways to drive it: **manual commands** (below) or **AI tools via MCP**
+  (`teamsync mcp`, 9 tools — see `docs/mcp-claude-code.md`).
+- An optional **local team server** (`teamsync serve`) adds rosters, join
+  codes, and heartbeats for everyone who installed the CLI.
+
+Full command manual: **`docs/MANUAL.md`** · AI setup: `docs/mcp-claude-code.md`
+· Live-merge verification: `docs/live-verification.md`
 
 ```
 teamsync doctor    # verify prerequisites (explains; never auto-installs)
@@ -16,10 +23,15 @@ teamsync login     # GitHub login via gh (browser/device flow)
 teamsync init      # owner: add shared config, PR template, CI gate
 teamsync join      # teammates: clone + pick a role
 teamsync start     # unique task branch per task
-teamsync submit    # stage → commit → push → PR → auto-merge
+teamsync submit    # stage → commit → push → PR → auto-merge (one shot)
+teamsync stage     #   …or step-by-step: stage
+teamsync commit    #                     commit
+teamsync push      #                     push
 teamsync status    # PRs, checks, conflicts, blockers
 teamsync watch     # poll until merged (read-only)
 teamsync sync      # safely update from the default branch
+teamsync serve     # optional: local team server (REST + SSE)
+teamsync team …    #   create/join/list teams (admin + join codes)
 teamsync logout    # remove the shared gh login (with confirmation)
 ```
 
