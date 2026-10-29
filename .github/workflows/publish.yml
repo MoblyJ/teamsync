@@ -1,0 +1,39 @@
+# Publish @devoko/teamsync to npm via TRUSTED PUBLISHING (OIDC) — the
+# officially recommended replacement for long-lived publish tokens
+# (npm deprecated 2FA-bypass tokens; see github.blog 2026-07-08 changelog).
+#
+# One-time setup (repo owner, on npmjs.com):
+#   Account → Access Tokens is NOT needed. Instead:
+#   1. Open https://www.npmjs.com/package/@devoko/teamsync/settings (after
+#      first publish) — or register the name beforehand via
+#      https://www.npmjs.com/trusted-publishing → "Register package"
+#   2. Trusted publisher:
+#        Repository:  MoblyJ/teamsync
+#        Workflow:    publish.yml
+#        Environment: (leave empty or "publish")
+#   3. That's it — this workflow can then publish with NO token and NO OTP.
+#
+# Runs manually (Actions → Publish → Run workflow) so nothing auto-fires.
+name: publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Required for OIDC token exchange with the npm registry.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm test
+      - name: Publish (trusted publishing — no token, no OTP)
+        run: npm publish --access public

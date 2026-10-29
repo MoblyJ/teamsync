@@ -59,20 +59,51 @@ sudo apt install gh
 
 Supported shells/platforms: Windows (PowerShell), macOS (zsh/bash), Linux, WSL.
 
-## Installation (until published)
+## Installing guide
 
-The npm scope is configurable — the placeholder is `@teamsync/teamsync`.
-Nothing is published during development; install from a local tarball:
+### Option A — install from npm (recommended)
 
 ```sh
-git clone <this repo> && cd teamsync
-npm install
-npm pack                      # → teamsync-teamsync-0.1.0.tgz
-npm install -g ./teamsync-teamsync-0.1.0.tgz
-teamsync --version
+npm install -g @devoko/teamsync
+teamsync --version          # → 0.1.0
 ```
 
-To rename the scope: change `name` in package.json and rebuild.
+On npm ≤ 11, the first install automatically runs **first-run setup**:
+
+- `gh` (GitHub CLI) not installed? It asks **y/N**, then installs it
+  (sudo password may be requested; apt/brew/winget per platform).
+- `gh` installed but not logged in? It offers **`gh auth login`** (browser or
+  device code — your token stays inside gh).
+- Everything ready? One line, and it leaves you alone.
+
+Non-interactive shells (CI, scripts) are never prompted — they get printed
+hints instead. Opt out entirely with `TEAMSYNC_NO_SETUP=1`.
+
+> **npm ≥ 12 note:** npm now blocks lifecycle scripts (like our setup hook)
+> unless the installer allows them. If setup didn't run, that's why — just
+> run `teamsync doctor` once and follow its hints, or allow the script:
+> `npm approve-scripts` in the global prefix. The CLI itself works fully
+> without the hook; it only automates gh install/login.
+
+### Option B — install straight from GitHub
+
+```sh
+npm install -g github:MoblyJ/teamsync
+# npm ≥ 12 blocks git dependencies by default; add:
+npm install -g github:MoblyJ/teamsync --allow-git
+```
+
+### Option C — hack on it locally, install your own build
+
+```sh
+git clone https://github.com/MoblyJ/teamsync.git
+cd teamsync
+npm install                 # runs build + tests prep
+npm pack                    # → devoko-teamsync-0.1.0.tgz
+npm install -g ./devoko-teamsync-0.1.0.tgz
+```
+
+After any option, check everything with `teamsync doctor`.
 
 ## One-time setup (repository owner)
 
@@ -279,7 +310,7 @@ future dashboard reads).
 | PR stuck in `checks-blocked` | a required check never ran or was **skipped** — TeamSync refuses to call skipped checks success; use the aggregate `integration` gate from the template |
 | PR `behind` | base moved: `teamsync sync`, then `teamsync submit` (fresh checks run against the new base) |
 | Merge conflict | `teamsync sync` on your task branch; resolve, commit the merge, `teamsync submit` |
-| `config version N not supported` | update the CLI: `npm install -g @teamsync/teamsync@latest` |
+| `config version N not supported` | update the CLI: `npm install -g @devoko/teamsync@latest` |
 | Rate limited in `watch` | it backs off automatically; increase `--interval` |
 | WSL: pushes ask for username | install/run gh inside WSL, then `gh auth setup-git` there |
 

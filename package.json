@@ -1,9 +1,21 @@
 {
-  "name": "@teamsync/teamsync",
+  "name": "@devoko/teamsync",
   "version": "0.1.0",
   "description": "Git-based team collaboration CLI for small teams: role-aware branches, PRs, and GitHub-native auto-merge.",
   "license": "MIT",
   "type": "module",
+  "author": "MoblyJ",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoblyJ/teamsync.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MoblyJ/teamsync/issues"
+  },
+  "homepage": "https://github.com/MoblyJ/teamsync#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
